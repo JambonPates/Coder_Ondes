@@ -1,4 +1,4 @@
-7  //nombre de points
+7  //durée simulmation
 0.3  //Interval entre deux points 
 2.5
 2.6
