@@ -13,17 +13,16 @@ nb_points = 1000  # résolution du signal continu
 def generate_signal(t_values):
     return [A * math.cos(2 * math.pi * f * t) + B * math.sin(2 * math.pi * g * t + phi) for t in t_values]
 
-# Étape 2 : Lire les données depuis texte.txt
+# Étape 2 : Lire les données depuis un fichier
 def load_samples_from_file(filename):
     with open(filename, 'r') as file:
         lines = [line.strip() for line in file if line.strip()]
     
-    duree = float(lines[0])
-    intervalle = float(lines[1])
-    y_sampled = [float(val) for val in lines[2:]]
-    t_sampled = [i * intervalle for i in range(len(y_sampled))]
+    # Récupérer les données sous forme de liste de float
+    y_values = [float(val) for val in lines]
+    t_values = [i for i in range(len(y_values))]
     
-    return t_sampled, y_sampled, duree
+    return t_values, y_values
 
 # Étape 3 : Reconstruction par interpolation linéaire (fluide)
 def reconstruct_signal(t_sampled, y_sampled, t_continuous):
@@ -43,27 +42,48 @@ def reconstruct_signal(t_sampled, y_sampled, t_continuous):
     return y_reconstructed
 
 # ======= MAIN =======
-# Lire les échantillons depuis texte.txt
-t_sampled, y_sampled, duree_totale = load_samples_from_file("texte.txt")
+# Lire les échantillons depuis données1.txt (échantillonnage)
+t_sampled1, y_sampled1 = load_samples_from_file("données1.txt")
+
+# Lire les échantillons depuis données2.txt (quantification)
+t_sampled2, y_sampled2 = load_samples_from_file("données2.txt")
+
+# Lire les échantillons depuis données3.txt (encodage binaire)
+t_sampled3, y_sampled3 = load_samples_from_file("données3.txt")
+
+# Fusionner les données des trois fichiers
+# Combinaison des échantillons et valeurs quantifiées (pour les 3 fichiers)
+t_sampled = t_sampled1 + t_sampled2 + t_sampled3
+y_sampled = y_sampled1 + y_sampled2 + y_sampled3
 
 # Générer le signal original
+duree_totale = max(t_sampled)  # Durée maximale des échantillons
 t_continuous = [i * (duree_totale / (nb_points - 1)) for i in range(nb_points)]
 y_continuous = generate_signal(t_continuous)
 
-# Reconstruire le signal de manière fluide
+# Reconstruire le signal avec toutes les données
 y_reconstructed = reconstruct_signal(t_sampled, y_sampled, t_continuous)
 
 # Affichage
 plt.figure(figsize=(12, 6))
-plt.plot(t_continuous, y_continuous, label="Signal original", linewidth=1.2)
-plt.stem(t_sampled, y_sampled, linefmt='orange', markerfmt='o', basefmt=" ", label="Échantillons")
-plt.plot(t_continuous, y_reconstructed, label="Reconstruction fluide", linestyle='--', color='red')
 
+# Signal original
+plt.plot(t_continuous, y_continuous, label="Signal original", linewidth=1.2)
+
+# Échantillons combinés
+plt.stem(t_sampled, y_sampled, linefmt='orange', markerfmt='o', basefmt=" ", label="Échantillons combinés")
+
+# Reconstruction du signal combiné
+plt.plot(t_continuous, y_reconstructed, label="Reconstruction combinée", linestyle='--', color='red')
+
+# Titres et labels
 plt.xlabel("Temps (s)")
 plt.ylabel("Amplitude")
-plt.title("Signal original et reconstruction fluide depuis texte.txt")
+plt.title("Signal original et reconstruction combinée")
 plt.legend()
 plt.grid(True)
 plt.ylim(-2, 2)
 plt.tight_layout()
+
+# Afficher le graphique
 plt.show()
