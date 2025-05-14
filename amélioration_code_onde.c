@@ -416,7 +416,7 @@ int main(){
     ConversionDataBinaire();              
     ConversionBinaireData();             
 
-    affichageavantApres();
+    AffichageBinaireReconstruit();
     AffichageBinaireReconstruit();
     AffichageEchantillonage();
     AffichageComplet();
