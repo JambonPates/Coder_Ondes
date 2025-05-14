@@ -66,12 +66,27 @@ int CalculeTauxEchantillon(int* freq1, int* freq2){
 }
 
 
-void viderListe(int* liste[], int len){
+void viderListe(char* liste, int len){
 
     for (int i = 0; i < len; i++){
-        liste[i] = 0;
+        liste[i] = '0';
     }
 
+}
+
+
+int binaireToInt(char* liste, int len){
+
+    int entier = 0;
+    int puissance = 1;
+    for (int i = len - 1; i >= 0; i--){
+        //printf("i = %d, int = %d, c= %c\n", i, (liste[i] -'0'), liste[i]);
+        entier += (liste[i] -'0') * puissance;
+        puissance *= 2;
+    }
+    
+
+    return entier;
 }
 
 
@@ -247,10 +262,10 @@ void ConversionDataBinaire(int* nbPallier, float* min, float* max){
 
     float intervalle;
     fscanf(echantillon, "%f", &intervalle);
-    fclose(echantillon);
 
 
     int intervalle_int = (int)(intervalle * 1000.0);  // Convertir à un entier avec 4 décimales
+    printf("Interval * 1000 = %d\n", intervalle_int);
 
     if (intervalle_int < 0){
         intervalle_int = 0;
@@ -259,52 +274,106 @@ void ConversionDataBinaire(int* nbPallier, float* min, float* max){
         intervalle_int = 255;
     } 
 
-    int bits[10] = 0;
+    char bits[10];
+    char* pListe = &bits[0];
 
-    viderListe(bits, 10);
+    viderListe(pListe, 10);
 
     //printf("Intervalle (en binaire sur 8 bits) : ");
-    for (int i = 7; i >= 0; i--){
-        bits[i] = (*nbPallier % 2); 
-        *nbPallier = *nbPallier / 2;          
+    int i = 0;
+
+
+    for (int i = 0; i < 8; i++) {
+        bits[i] = (intervalle_int % 2) + '0';
+        intervalle_int = intervalle_int / 2;
     }
 
-    for (int i = 7; i >= 0; i--) {
-        int bit = (intervalle_int >> i) & 1;
-        fprintf(data_bianire, "%d", bit);
-    }
+
     //printf("Intervalle (entier) : %d\n", intervalle_int);
-    for (int i = 0; i < 8; i++){
-        //fprintf();
+    for (int i = 7; i >= 0; i--){
+        fprintf(data_bianire, "%c", bits[i]);
     }
 
     // On fait la conversion du nombre de palliers
     if (*nbPallier < 0){
         *nbPallier = 0;
     } 
-    if (*nbPallier > 255){
-        *nbPallier = 255;
+    if (*nbPallier > 1223){
+        *nbPallier = 1223;
     } 
 
-    printf("Binaire sur 8 bits : ");
+    fprintf(data_bianire, "\n");
 
-    viderListe(bits, 10);
+    //printf("Binaire sur 8 bits : ");
+
+    viderListe(pListe, 10);
+    //printf("\n");
+    printf("Valeur entière utilisée : %d\n", *nbPallier);
     
-    for (int i = 9; i >= 0; i--){
+    for (int i = 0; i < 10; i++){
+        //printf("%d", *nbPallier % 2);
         bits[i] = (*nbPallier % 2); 
         *nbPallier = *nbPallier / 2;          
     }
+    //printf("\n");
 
 
+    //printf("nbNiveau envoyé : ");
+    for (int i = 9; i >= 0; i--){
+        fprintf(data_bianire, "%d", bits[i]);
+        //printf("%c", bits[i]);
+    }
+    //printf("\n");
 
-    printf("\n");
-    printf("Valeur entière utilisée : %d\n", *nbPallier);
+    fclose(data_bianire);
+    fclose(quantifiaction);
+    fclose(echantillon);
 
-
-
+}
 
 
 void ConversionBinaireData(){
+
+    int interval = 0;
+    float f_interval = 0.0;
+    int nbNiveaux = 1;
+
+    FILE *data_bianire = fopen("data_binaire.txt", "r");
+
+    if (data_bianire == NULL){
+        printf("Erreur lors de l'ouverture des fichiers pour la conversion binaire\n");
+        exit(1);
+    }
+
+    char bits[10];
+    char* pBits = &bits[0];
+    viderListe(pBits, 10);
+
+    // Lecture de l'interval
+    for (int i = 0; i < 8; i++){
+        fscanf(data_bianire, "%c", &bits[i]);
+        //printf("%c", bits[i]);
+    }
+
+    interval = binaireToInt(pBits, 8);
+
+    //printf("interval recu = %d\n", interval);
+    f_interval = (float)interval / 1000;
+    printf("interval final = %f\n", f_interval);
+
+    // On s'occupe du nombre de Niveaux
+
+    viderListe(pBits, 10);
+
+    //printf("\nnbNiveau recu : ");
+    for (int i = -1; i < 10; i++){
+        fscanf(data_bianire, "%c", &bits[i]);
+        //printf("i = %d, c = %c\n", i, bits[i]);
+    }
+    //printf("\n");
+
+    nbNiveaux = binaireToInt(pBits, 10);
+    printf("niveaux recu = %d\n", nbNiveaux);
     
 }
 
@@ -420,6 +489,8 @@ void AffichageAvantApres(){
 
 int main(){
 
+    int nothing = 0;
+
     int ampli1 = 2; // A
     int ampli2 = 2; // B
     int freq1 = 3; //f
@@ -455,11 +526,13 @@ int main(){
     Quantification(PnbPallier, PvalMin, PvalMax);
 
     ConversionDataBinaire(PnbPallier, PvalMin, PvalMax);
+    //scanf("%d", &nothing);
+    ConversionBinaireData();
 
     //AffichageavantApres();
-    AffichageEchantillonage();
-    AffichageComplet();
-    AffichageQuantificationSeule();
+    // AffichageEchantillonage();
+    // AffichageComplet();
+    // AffichageQuantificationSeule();
     //printf("%.2lf", calculerValOndeEnUnPoint(Pampli1, Pampli2, Pfreq1, Pfreq2, Ptemps, Pdephas));
 
     
