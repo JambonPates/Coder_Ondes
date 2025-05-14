@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <math.h>
+#include <string.h>
 
 #define TempsDeSimulation 5.0
 #define MaxTab 250
@@ -217,23 +218,63 @@ void ConversionDataBinaire(){
         exit(1);
     }
 
-    float temps, valeur;
+    float time, val;
+    float valeurs_uniques[MaxTab];
+    int nb_valeurs = 0;
 
-    // Lecture et conversion
-    while(fscanf(quantification, "%f %f", &temps, &valeur) == 2){
-        int entier = (int)(valeur * 100); // Ex: 1.23 devient 123 (2 décimales)
-        unsigned int absolu = abs(entier); 
-        char binaire[32];
-
-        for(int i = 15; i >= 0; i--){
-            binaire[15 - i] = (absolu & (1 << i)) ? '1' : '0';
+    // Lire toutes les valeurs quantifiées et les stocker
+    while (fscanf(quantification, "%f %f", &time, &val) == 2) {
+        int existe = 0;
+        for (int i = 0; i < nb_valeurs; i++) {
+            if (fabs(valeurs_uniques[i] - val) < 0.0001) {
+                existe = 1;
+                break;
+            }
         }
-        binaire[16] = '\0';
+        if (!existe) {
+            valeurs_uniques[nb_valeurs++] = val;
+        }
+    }
 
-        // Ajouter le signe
-        char signe = (entier < 0) ? '1' : '0';
+    // Tri des valeurs pour garantir les indices corrects
+    for (int i = 0; i < nb_valeurs - 1; i++) {
+        for (int j = i + 1; j < nb_valeurs; j++) {
+            if (valeurs_uniques[i] > valeurs_uniques[j]) {
+                float temp = valeurs_uniques[i];
+                valeurs_uniques[i] = valeurs_uniques[j];
+                valeurs_uniques[j] = temp;
+            }
+        }
+    }
 
-        fprintf(data_binaire, "%f %c%s\n", temps, signe, binaire);
+    int bits = ceil(log2(nb_valeurs)); // bits nécessaires
+
+    rewind(quantification); // retour au début pour relire
+
+    while (fscanf(quantification, "%f %f", &time, &val) == 2) {
+        int signe = (val < 0) ? 1 : 0;
+        float absval = fabs(val);
+
+        // Trouver l'indice de la valeur
+        int index = -1;
+        for (int i = 0; i < nb_valeurs; i++) {
+            if (fabs(valeurs_uniques[i] - absval) < 0.0001) {
+                index = i;
+                break;
+            }
+        }
+
+        if (index == -1) {
+            printf("Valeur non trouvée dans les valeurs uniques\n");
+            exit(1);
+        }
+
+        // Conversion binaire
+        fprintf(data_binaire, "%d", signe);
+        for (int i = bits - 1; i >= 0; i--) {
+            fprintf(data_binaire, "%d", (index >> i) & 1);
+        }
+        fprintf(data_binaire, "\n");
     }
 
     fclose(quantification);
@@ -245,35 +286,65 @@ void ConversionBinaireData(){
 
     FILE *data_binaire = fopen("data_binaire.txt", "r");
     FILE *data_reconstruit = fopen("data_reconstruit.txt", "w");
+    FILE *quantification = fopen("data_Quantification.txt", "r");
 
-    if (data_binaire == NULL || data_reconstruit == NULL){
-        printf("Erreur lors de l'ouverture des fichiers pour la conversion inverse\n");
+    if (data_binaire == NULL || data_reconstruit == NULL || quantification == NULL){
+        printf("Erreur lors de l'ouverture des fichiers\n");
         exit(1);
     }
 
-    float temps;
-    char signe;
-    char binaire[17]; // 16 bits + '\0'
+    // Récupérer toutes les valeurs et temps d'origine
+    float valeurs_uniques[MaxTab];
+    float temps_tab[MaxTab];
+    float valeurs[MaxTab];
+    int nb_valeurs = 0;
 
-    while(fscanf(data_binaire, "%f %c%16s", &temps, &signe, binaire) == 3){
-        int valeur = 0;
-
-        for(int i = 0; i < 16; i++){
-            if(binaire[i] == '1'){
-                valeur |= (1 << (15 - i));
+    while (fscanf(quantification, "%f %f", &temps_tab[nb_valeurs], &valeurs[nb_valeurs]) == 2) {
+        int existe = 0;
+        for (int i = 0; i < nb_valeurs; i++) {
+            if (fabs(valeurs[i] - valeurs[nb_valeurs]) < 0.0001) {
+                existe = 1;
+                break;
             }
         }
+        if (!existe) {
+            valeurs_uniques[nb_valeurs++] = fabs(valeurs[nb_valeurs]);
+        }
+    }
 
-        if(signe == '1'){
-            valeur = -valeur;
+    // Tri des valeurs uniques
+    for (int i = 0; i < nb_valeurs - 1; i++) {
+        for (int j = i + 1; j < nb_valeurs; j++) {
+            if (valeurs_uniques[i] > valeurs_uniques[j]) {
+                float temp = valeurs_uniques[i];
+                valeurs_uniques[i] = valeurs_uniques[j];
+                valeurs_uniques[j] = temp;
+            }
+        }
+    }
+
+    rewind(data_binaire);
+    int bits = ceil(log2(nb_valeurs));
+    char ligne[64];
+    int index = 0;
+
+    while (fgets(ligne, sizeof(ligne), data_binaire) != NULL) {
+        if (strlen(ligne) < bits + 1) continue;
+
+        int signe = (ligne[0] == '1') ? -1 : 1;
+        int val_index = 0;
+
+        for (int i = 0; i < bits; i++) {
+            val_index = (val_index << 1) | (ligne[1 + i] - '0');
         }
 
-        float resultat = (float)valeur / 100.0; // Pour retrouver l’amplitude originale
-        fprintf(data_reconstruit, "%f %f\n", temps, resultat);
+        float valeur = signe * valeurs_uniques[val_index];
+        fprintf(data_reconstruit, "%f %f\n", temps_tab[index++], valeur);
     }
 
     fclose(data_binaire);
     fclose(data_reconstruit);
+    fclose(quantification);
 }
 
 
@@ -416,7 +487,7 @@ int main(){
     ConversionDataBinaire();              
     ConversionBinaireData();             
 
-    affichageavantApres();
+    AffichageavantApres();
     AffichageBinaireReconstruit();
     AffichageEchantillonage();
     AffichageComplet();
