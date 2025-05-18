@@ -353,11 +353,11 @@ void ConversionDataBinaire(int* nbPallier, float* min, float* max){
     float addDiff = ((fabs(*max) + fabs(*min)) / (stockPallier - 1));
     char* tabCodage = (char*)malloc(bitsAutiliser * sizeof(char));
 
-    printf("\nmin = %f, max = %f, nbPallier = %d, addDiff = %f\n\n", *min, *max, stockPallier, addDiff);
+    //printf("\nmin = %f, max = %f, nbPallier = %d, addDiff = %f\n\n", *min, *max, stockPallier, addDiff);
 
     while (fscanf(quantifiaction, "%f", &valeur) == 1){
         // Calcul du niveau de quantification
-        printf("Valeur Quantifiée = %f =>", valeur);
+        //printf("Valeur Quantifiée = %f =>", valeur);
 
         while(niveau < stockPallier && test < valeur){
             test += addDiff;
@@ -366,7 +366,7 @@ void ConversionDataBinaire(int* nbPallier, float* min, float* max){
             niveau++;
         }
 
-        printf("%d\n", niveau);
+        //printf("%d\n", niveau);
 
         viderListe(tabCodage, bitsAutiliser);
 
@@ -375,13 +375,13 @@ void ConversionDataBinaire(int* nbPallier, float* min, float* max){
             niveau = niveau / 2;
         }
 
-        printf("Binaire = ");
+        //printf("Binaire = ");
         for (int i = bitsAutiliser - 1; i >= 0; i--){
             fprintf(data_bianire, "%c", tabCodage[i]);
-            printf("%c", tabCodage[i]);
+            //printf("%c", tabCodage[i]);
         }
         //fprintf(data_bianire, "\n");
-        printf("\n");
+        //printf("\n");
 
         // Debug
         //printf("Valeur lue : %.3f → Niveau : %d\n", valeur, niveau);
@@ -430,7 +430,7 @@ void ConversionBinaireData(float* min, float*max){
     //printf("interval recu = %d\n", interval);
     f_interval = (float)interval / 1000;
     f_interval *= 1.006;
-    printf("interval final = %f\n", f_interval);
+    //printf("interval final = %f\n", f_interval);
 
     // On s'occupe du nombre de Niveaux
 
@@ -444,7 +444,7 @@ void ConversionBinaireData(float* min, float*max){
     //printf("\n");
 
     nbNiveaux = binaireToInt(pBits, 10);
-    printf("niveaux recu = %d\n", nbNiveaux);
+    //printf("niveaux recu = %d\n", nbNiveaux);
 
     //Calcule du nombre de bit;
     int n = nbNiveaux;
@@ -458,30 +458,30 @@ void ConversionBinaireData(float* min, float*max){
             bitsAutiliser++;
         }
     }
-    printf("Je vais lire un 10 char\n");
+    //printf("Je vais lire un 10 char\n");
 
     char* tabDecodage = (char*)malloc(bitsAutiliser * sizeof(char));
     float valFinale = *min;
     float addDiff = ((fabs(*max) + fabs(*min)) / (nbNiveaux - 1));
 
     // Décodage
-    printf("\nmin = %f, max = %f, nbPallier = %d, addDiff = %f\n\n", *min, *max, nbNiveaux, addDiff);
+    //printf("\nmin = %f, max = %f, nbPallier = %d, addDiff = %f\n\n", *min, *max, nbNiveaux, addDiff);
 
     int PallierPoint = 0;
     float temps = 0.0;
     while(fscanf(data_bianire, "%c", &tabDecodage[0]) == 1){
 
-        printf("Binaire Recu : %c", tabDecodage[0]);
+        //printf("Binaire Recu : %c", tabDecodage[0]);
 
         for (int i = 1; i < bitsAutiliser; i++){
 
             fscanf(data_bianire, "%c", &tabDecodage[i]);
-            printf("%c", tabDecodage[i]);
+            //printf("%c", tabDecodage[i]);
         }
         
 
         PallierPoint = binaireToInt(tabDecodage, bitsAutiliser);
-        printf(" => %d\n", PallierPoint);
+        //printf(" => %d\n", PallierPoint);
 
         valFinale = *min;
         for (int j = 0; j < PallierPoint -1; j++){
@@ -530,7 +530,7 @@ void AffichageEchantillonage() {
     FILE* gnuplot = popen("gnuplot -persistent", "w");
 
     if (gnuplot) {
-        fprintf(gnuplot, "set title 'Signal échantillonné (impulsions)'\n");
+        fprintf(gnuplot, "set title 'Signal échantillonné'\n");
         fprintf(gnuplot, "set xlabel 'Temps (s)'\n");
         fprintf(gnuplot, "set ylabel 'Amplitude'\n");
         fprintf(gnuplot, "set grid\n");
@@ -567,21 +567,24 @@ void AffichageComplet(){
 }
 
 void AffichageQuantificationSeule(){
-    FILE* gnuplot = popen("gnuplot -persistent", "w");
+    
+    FILE *gnuplotPipe = popen("gnuplot -persistent", "w");
 
-    if (gnuplot){
+    if (gnuplotPipe) {
+        fprintf(gnuplotPipe, "set title 'Quantification'\n");
+        fprintf(gnuplotPipe, "set xlabel 'Temps (s)'\n");
+        fprintf(gnuplotPipe, "set ylabel 'Amplitude'\n");
+        fprintf(gnuplotPipe, "set grid\n");
 
-        fprintf(gnuplot, "set title 'Données de quantification'\n");
-        fprintf(gnuplot, "set xlabel 'Temps (s)'\n");
-        fprintf(gnuplot, "set ylabel 'Amplitude'\n");
-        fprintf(gnuplot, "set grid\n");
-        fprintf(gnuplot, "plot 'data_Quantification.txt' using 1:2 with points lc rgb 'red' pt 7 ps 1.5 title 'Quantifié'\n");
-        pclose(gnuplot);
-    } 
-    else{
-        printf("Erreur lors de l'ouverture de Gnuplot\n");
+        fprintf(gnuplotPipe, "plot 'data_QuantificationAffiche.txt' using 1:2 with points lc rgb 'blue' pt 7 ps 1.5 title 'Signal'\n");
+
+        fflush(gnuplotPipe);
+        pclose(gnuplotPipe);
+    } else {
+        fprintf(stderr, "Erreur : impossible d'ouvrir le pipe vers Gnuplot\n");
 
     }
+
 }
 
 void AffichageAvantApres(){
@@ -611,8 +614,8 @@ void AffichageReconstruitSeul() {
     if (gnuplotPipe) {
         // Commandes Gnuplot
         fprintf(gnuplotPipe, "set title 'Courbe Reconstruite'\n");
-        fprintf(gnuplotPipe, "set xlabel 'X'\n");
-        fprintf(gnuplotPipe, "set ylabel 'Y'\n");
+        fprintf(gnuplotPipe, "set xlabel 'Temps (s)'\n");
+        fprintf(gnuplotPipe, "set ylabel 'Amplitude'\n");
         fprintf(gnuplotPipe, "plot 'data_reconstruit.txt' with linespoints title 'Courbe reconstruite' lw 2 lt rgb 'blue'\n");
         fflush(gnuplotPipe);  
         pclose(gnuplotPipe);  
@@ -663,7 +666,7 @@ int main(){
     AffichageEchantillonage();
 
     Quantification(PnbPallier, PvalMin, PvalMax);
-    AffichageEchantillonage();
+    AffichageQuantificationSeule();
 
     ConversionDataBinaire(PnbPallier, PvalMin, PvalMax);
     ConversionBinaireData(PvalMin, PvalMax);
@@ -671,6 +674,8 @@ int main(){
 
     AffichageReconstruitSeul();
     AffichageAvantApres();
+
+    printf("Execution Terminé\n");
 
     return 0;
 }
