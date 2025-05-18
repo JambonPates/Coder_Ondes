@@ -23,7 +23,7 @@ void AffichageComplet();
 void AffichageavantApres();
 
 void ConversionDataBinaire(int* nbPallier, float* min, float* max);
-void ConversionBinaireData();
+void ConversionBinaireData(float* min, float*max);
 
 
 //----------------------------------------------------------------------------------------------------------
@@ -31,21 +31,21 @@ void ConversionBinaireData();
 
 void SaisieDonnees(int* ampli1, int* ampli2, int* freq1, int* freq2, float* temps, int* dephas){
 
-        printf("/nEntrer Valeur Amplitude A : ");
+        printf("\nEntrer Valeur Amplitude A : ");
         scanf("%d", ampli1);
 
-        printf("/nEntrer Valeur Amplitude B : ");
+        printf("\nEntrer Valeur Amplitude B : ");
         scanf("%d", ampli2);
 
-        printf("/nEntrer Valeur frequece f : ");
+        printf("\nEntrer Valeur frequece f : ");
         scanf("%d", freq1);
-        printf("/nEntrer Valeur frequence g : ");
+        printf("\nEntrer Valeur frequence g : ");
         scanf("%d", freq2);
 
         // printf("/nEntrer Valeur temps t : ");
         // scanf("%d", temps);
 
-        printf("/nEntrer Valeur déphasage phi1 : ");
+        printf("\nEntrer Valeur déphasage phi1 : ");
         scanf("%d", dephas);
 
 }
@@ -61,7 +61,7 @@ float calculerValOndeEnUnPoint(int* ampli1, int* ampli2, int* freq1, int* freq2,
 
 int CalculeTauxEchantillon(int* freq1, int* freq2){
 
-    return 2 * Pi * (fmax(*(freq1), *(freq2)));
+    return 2 * 2 * (fmax(*(freq1), *(freq2)));
 
 }
 
@@ -157,9 +157,11 @@ void Quantification(int* nb_pallier, float* min, float* max){
     // Ouverture des fichiers txt
     FILE *echantillon;
     FILE *quantification;
+    FILE *quantificationAffiche;
 
     echantillon = fopen("data_echantillon.txt", "r");
-    quantification = fopen("data_QuantificationTets.txt", "w");
+    quantification = fopen("data_Quantification.txt", "w");
+    quantificationAffiche = fopen("data_QuantificationAffiche.txt", "w");
 
     if(echantillon == NULL || quantification == NULL){
         printf("Erreur lors de l'ouverture d'un fichier\n");
@@ -234,17 +236,20 @@ void Quantification(int* nb_pallier, float* min, float* max){
     for (int i = 0; i < count; i++){
 
         float final = roundf(values[i] / meilleur_interval) * meilleur_interval;
-        fprintf(quantification, "%f %f\n", times[i], final); 
+        fprintf(quantification, "%f\n", final); 
+        fprintf(quantificationAffiche, "%f %f\n", times[i] ,final);
 
     }
 
     fclose(echantillon);
     fclose(quantification);
+    fclose(quantificationAffiche);
 
 }
 
 
 void ConversionDataBinaire(int* nbPallier, float* min, float* max){
+    
 
     // Comme d'habitude, ouverture des fichiers
     FILE *quantifiaction = fopen("data_Quantification.txt", "r");
@@ -265,7 +270,7 @@ void ConversionDataBinaire(int* nbPallier, float* min, float* max){
 
 
     int intervalle_int = (int)(intervalle * 1000.0);  // Convertir à un entier avec 4 décimales
-    printf("Interval * 1000 = %d\n", intervalle_int);
+    //printf("Interval * 1000 = %d\n", intervalle_int);
 
     if (intervalle_int < 0){
         intervalle_int = 0;
@@ -283,7 +288,7 @@ void ConversionDataBinaire(int* nbPallier, float* min, float* max){
     int i = 0;
 
 
-    for (int i = 0; i < 8; i++) {
+    for (int i = 0; i < 8; i++){
         bits[i] = (intervalle_int % 2) + '0';
         intervalle_int = intervalle_int / 2;
     }
@@ -302,13 +307,14 @@ void ConversionDataBinaire(int* nbPallier, float* min, float* max){
         *nbPallier = 1223;
     } 
 
-    fprintf(data_bianire, "\n");
+    //fprintf(data_bianire, "\n");
 
     //printf("Binaire sur 8 bits : ");
 
     viderListe(pListe, 10);
     //printf("\n");
-    printf("Valeur entière utilisée : %d\n", *nbPallier);
+    //printf("Nombre de palliers utilisés : %d\n", *nbPallier);
+    int stockPallier = *nbPallier;
     
     for (int i = 0; i < 10; i++){
         //printf("%d", *nbPallier % 2);
@@ -325,20 +331,84 @@ void ConversionDataBinaire(int* nbPallier, float* min, float* max){
     }
     //printf("\n");
 
+    //Calcule du nombre de bit;
+    int n = stockPallier;
+    int bitsAutiliser = 0;
+    if (n == 0){
+        bitsAutiliser = 1; 
+    } 
+    else{
+        while (n > 0){
+            n = n / 2;
+            bitsAutiliser++;
+        }
+    }
+    //printf("Il faut %d pour coder chaque point\n", bitsAutiliser);
+
+
+    // Conversion des velaurs 
+    float valeur;
+    int niveau = 0;
+    float test = *min;
+    float addDiff = ((fabs(*max) + fabs(*min)) / (stockPallier - 1));
+    char* tabCodage = (char*)malloc(bitsAutiliser * sizeof(char));
+
+    printf("\nmin = %f, max = %f, nbPallier = %d, addDiff = %f\n\n", *min, *max, stockPallier, addDiff);
+
+    while (fscanf(quantifiaction, "%f", &valeur) == 1){
+        // Calcul du niveau de quantification
+        printf("Valeur Quantifiée = %f =>", valeur);
+
+        while(niveau < stockPallier && test < valeur){
+            test += addDiff;
+
+            //printf("%f < %f => %d\n", test, valeur, niveau);
+            niveau++;
+        }
+
+        printf("%d\n", niveau);
+
+        viderListe(tabCodage, bitsAutiliser);
+
+        for (int i = 0; i < bitsAutiliser; i++){
+            tabCodage[i] = (niveau % 2) + '0';
+            niveau = niveau / 2;
+        }
+
+        printf("Binaire = ");
+        for (int i = bitsAutiliser - 1; i >= 0; i--){
+            fprintf(data_bianire, "%c", tabCodage[i]);
+            printf("%c", tabCodage[i]);
+        }
+        //fprintf(data_bianire, "\n");
+        printf("\n");
+
+        // Debug
+        //printf("Valeur lue : %.3f → Niveau : %d\n", valeur, niveau);
+        
+
+        niveau = 0;
+        test = *min;
+
+    }
+
     fclose(data_bianire);
     fclose(quantifiaction);
     fclose(echantillon);
+    free(tabCodage);
 
 }
 
 
-void ConversionBinaireData(){
+void ConversionBinaireData(float* min, float*max){
 
     int interval = 0;
     float f_interval = 0.0;
     int nbNiveaux = 1;
 
     FILE *data_bianire = fopen("data_binaire.txt", "r");
+    FILE *data_reconstruit = fopen("data_reconstruit.txt", "w");
+
 
     if (data_bianire == NULL){
         printf("Erreur lors de l'ouverture des fichiers pour la conversion binaire\n");
@@ -359,6 +429,7 @@ void ConversionBinaireData(){
 
     //printf("interval recu = %d\n", interval);
     f_interval = (float)interval / 1000;
+    f_interval *= 1.006;
     printf("interval final = %f\n", f_interval);
 
     // On s'occupe du nombre de Niveaux
@@ -366,7 +437,7 @@ void ConversionBinaireData(){
     viderListe(pBits, 10);
 
     //printf("\nnbNiveau recu : ");
-    for (int i = -1; i < 10; i++){
+    for (int i = 0; i < 10; i++){
         fscanf(data_bianire, "%c", &bits[i]);
         //printf("i = %d, c = %c\n", i, bits[i]);
     }
@@ -374,9 +445,64 @@ void ConversionBinaireData(){
 
     nbNiveaux = binaireToInt(pBits, 10);
     printf("niveaux recu = %d\n", nbNiveaux);
+
+    //Calcule du nombre de bit;
+    int n = nbNiveaux;
+    int bitsAutiliser = 0;
+    if (n == 0){
+        bitsAutiliser = 1; 
+    } 
+    else{
+        while (n > 0){
+            n = n / 2;
+            bitsAutiliser++;
+        }
+    }
+    printf("Je vais lire un 10 char\n");
+
+    char* tabDecodage = (char*)malloc(bitsAutiliser * sizeof(char));
+    float valFinale = *min;
+    float addDiff = ((fabs(*max) + fabs(*min)) / (nbNiveaux - 1));
+
+    // Décodage
+    printf("\nmin = %f, max = %f, nbPallier = %d, addDiff = %f\n\n", *min, *max, nbNiveaux, addDiff);
+
+    int PallierPoint = 0;
+    float temps = 0.0;
+    while(fscanf(data_bianire, "%c", &tabDecodage[0]) == 1){
+
+        printf("Binaire Recu : %c", tabDecodage[0]);
+
+        for (int i = 1; i < bitsAutiliser; i++){
+
+            fscanf(data_bianire, "%c", &tabDecodage[i]);
+            printf("%c", tabDecodage[i]);
+        }
+        
+
+        PallierPoint = binaireToInt(tabDecodage, bitsAutiliser);
+        printf(" => %d\n", PallierPoint);
+
+        valFinale = *min;
+        for (int j = 0; j < PallierPoint -1; j++){
+            valFinale += addDiff;
+        }
+
+        //fprintf(data_reconstruit, "%f %f\n", temps, valFinale);
+        fprintf(data_reconstruit, "%f %f\n", temps, valFinale);
+        viderListe(tabDecodage, bitsAutiliser);
+        temps += f_interval;
+
+    }
+    
+    free(tabDecodage);
+    fclose(data_bianire);
+    fclose(data_reconstruit);
     
 }
 
+
+//----------------------------------------------------------------------------------------------------------
 
 void AffichageFonctionOrigine(){
 
@@ -398,7 +524,6 @@ void AffichageFonctionOrigine(){
     }
 
 }
-
 
 void AffichageEchantillonage() {
 
@@ -431,7 +556,7 @@ void AffichageComplet(){
         fprintf(gnuplot, "plot \\\n");
         fprintf(gnuplot, "'data_original.txt' using 1:2 with lines lc rgb 'blue' title 'Original', \\\n");
         fprintf(gnuplot, "'data_echantillon.txt' every ::1 using 1:2 with impulses lc rgb 'green' title 'Échantillons', \\\n");
-        fprintf(gnuplot, "'data_Quantification.txt' using 1:2 with points lc rgb 'red' pt 7 ps 1.5 title 'Quantifié'\n");
+        fprintf(gnuplot, "'data_QuantificationAffiche.txt' using 1:2 with points lc rgb 'red' pt 7 ps 1.5 title 'Quantifié'\n");
 
         pclose(gnuplot);
     } 
@@ -440,7 +565,6 @@ void AffichageComplet(){
         printf("Erreur lors de l'ouverture de Gnuplot\n");
     }
 }
-
 
 void AffichageQuantificationSeule(){
     FILE* gnuplot = popen("gnuplot -persistent", "w");
@@ -460,41 +584,52 @@ void AffichageQuantificationSeule(){
     }
 }
 
-
 void AffichageAvantApres(){
 
     FILE* gnuplot = popen("gnuplot -persistent", "w");
 
-    if (gnuplot){
-
-        fprintf(gnuplot, "set title 'Signal : original, échantillonné, quantifié'\n");
-        fprintf(gnuplot, "set xlabel 'Temps (s)'\n");
-        fprintf(gnuplot, "set ylabel 'Amplitude'\n");
-        fprintf(gnuplot, "set grid\n");
-        fprintf(gnuplot, "plot 'data_original.txt' using 1:2 with lines title 'Original' lt rgb 'blue', \\\n");
-        fprintf(gnuplot, "     'data_Quantification.txt' using 1:2 with points title 'Quantifié' lt rgb 'red'\n");
-        pclose(gnuplot);
-
-    } 
-    else{
-
+    if (gnuplot == NULL) {
         printf("Erreur lors de l'ouverture de Gnuplot\n");
+        exit(1);
     }
+
+    fprintf(gnuplot, "set title 'Signal Original et Reconstruit'\n");
+    fprintf(gnuplot, "set xlabel 'Temps (s)'\n");
+    fprintf(gnuplot, "set ylabel 'Amplitude'\n");
+    fprintf(gnuplot, "set grid\n");
+    fprintf(gnuplot, "plot 'data_original.txt' using 1:2 with lines title 'Original' lt rgb 'blue', \\\n");
+    fprintf(gnuplot, "     'data_reconstruit.txt' with linespoints title 'Courbe reconstruite' lw 2 lt rgb 'green'\n");
+
+
+    pclose(gnuplot);
 
 }
 
+void AffichageReconstruitSeul() {
+    FILE *gnuplotPipe = popen("gnuplot -persistent", "w");
+
+    if (gnuplotPipe) {
+        // Commandes Gnuplot
+        fprintf(gnuplotPipe, "set title 'Courbe Reconstruite'\n");
+        fprintf(gnuplotPipe, "set xlabel 'X'\n");
+        fprintf(gnuplotPipe, "set ylabel 'Y'\n");
+        fprintf(gnuplotPipe, "plot 'data_reconstruit.txt' with linespoints title 'Courbe reconstruite' lw 2 lt rgb 'blue'\n");
+        fflush(gnuplotPipe);  
+        pclose(gnuplotPipe);  
+    } else {
+        fprintf(stderr, "Erreur : impossible d'ouvrir le pipe vers Gnuplot\n");
+    }
+}
 
 
 //----------------------------------------------------------------------------------------------------------
 
 int main(){
 
-    int nothing = 0;
-
     int ampli1 = 2; // A
     int ampli2 = 2; // B
-    int freq1 = 3; //f
-    int freq2 = 1; // g
+    int freq1 = 1; //f
+    int freq2 = 4; // g
     float temps = 0; // t
     int dephas = 0; // phi
     int TauxEchantillonage = 1;
@@ -519,24 +654,23 @@ int main(){
 
     TauxEchantillonage = CalculeTauxEchantillon(Pfreq1, Pfreq2);
 
-    Echantillonnage(PTauxEchantillonage, Pampli1, Pampli2, Pfreq1, Pfreq2, Ptemps, Pdephas);
+    SaisieDonnees(Pampli1, Pampli2, Pfreq1, Pfreq2, Ptemps, Pdephas);
 
     GenererSignalOriginal(Pampli1, Pampli2, Pfreq1, Pfreq2, Pdephas);
+    AffichageFonctionOrigine();
+
+    Echantillonnage(PTauxEchantillonage, Pampli1, Pampli2, Pfreq1, Pfreq2, Ptemps, Pdephas);
+    AffichageEchantillonage();
 
     Quantification(PnbPallier, PvalMin, PvalMax);
+    AffichageEchantillonage();
 
     ConversionDataBinaire(PnbPallier, PvalMin, PvalMax);
-    //scanf("%d", &nothing);
-    ConversionBinaireData();
-
-    //AffichageavantApres();
-    // AffichageEchantillonage();
-    // AffichageComplet();
-    // AffichageQuantificationSeule();
-    //printf("%.2lf", calculerValOndeEnUnPoint(Pampli1, Pampli2, Pfreq1, Pfreq2, Ptemps, Pdephas));
-
+    ConversionBinaireData(PvalMin, PvalMax);
     
-    //printf("%d\n",*(PTauxEchantillonage));
-    //printf("%lf", cos(0.5));
+
+    AffichageReconstruitSeul();
+    AffichageAvantApres();
+
     return 0;
 }
